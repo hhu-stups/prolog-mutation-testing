@@ -1,21 +1,21 @@
-Mutation Tester for Prolog:
+Mutation Testing Framework for Prolog (SWI and SICStus):
 
-How to use:
+How to use (for SICStus replace swipl with sicstus -l):
 
 
-$ swipl mutation_testing.pl // load the mutation tester
+$ swipl mutation_testing.pl // load the mutation tester 
 
 ?- [your_file]. // load your file(s) or mudule(s)
 
-?- mutation_test. // start the mutation tester
+?- mutation_test. // launch the mutation testing process
 
 
 OR
 
 
 :- use_module(mutation_testing). // type it at the very top 
-                                    (directyl after :- module(yourmodule, [args]).)
-                                    of your module that you want to test
+                                    (directly after :- module(yourmodule, [args]).)
+                                    of your module under test
                                     
 $ swipl yourmodule.pl 
 
@@ -24,11 +24,19 @@ $ swipl yourmodule.pl
 
 Features:
 
-You can alternatively use mutation_test/1 to specify your projects modules 
-you want to test
+Provided predicates within the framework are mutation_test/0, mutation_test/1 and mutation_test/2.
 
-?- mutation_test([module1, module2]).
+  mutation_test(+Modules, +Depth).
 
-OR
-
-?- mutation_test([]). // equals: mutation_test.
+    Modules is a list of modules under test. By using the empty list [] all loaded modules, except for internal Prolog
+    libraries, will be mutated and tested.
+    Depth is either an atom (basic, deep, experimental) which dictates the amount and kind of mutations or a list with
+    explicit mutations.
+    
+  mutation_test(+Input).
+  
+    If input is not a list, mutation_test([], Input) is being called. Otherwise, mutation_test(Input, basic) is being called.
+    
+  mutation_test.
+  
+    Calls mutation_test([], basic).
