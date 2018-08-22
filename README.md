@@ -1,6 +1,6 @@
-## Mutation Testing Framework for SWI and SICStus Prolog:
+# Mutation Testing Framework for SWI and SICStus Prolog:
 
-# How to use (for SICStus replace swipl with sicstus -l):
+## How to use (for SICStus replace swipl with sicstus -l):
 
 
 $ swipl mutation_testing.pl // load the mutation tester 
@@ -22,7 +22,7 @@ $ swipl yourmodule.pl
 ?- mutation_testing:mutation_test. 
 
 
-# Interface:
+## Interface:
 
 Provided predicates within the framework are mutation_test/0, mutation_test/1 and mutation_test/2.
 
