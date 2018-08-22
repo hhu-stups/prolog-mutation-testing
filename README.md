@@ -1,6 +1,6 @@
-# Mutation Testing Framework for SWI and SICStus Prolog:
+# Mutation Testing Framework for SWI and SICStus Prolog
 
-## How to use (for SICStus replace swipl with sicstus -l):
+## How to use (for SICStus replace swipl with sicstus -l)
 
 
 $ swipl mutation_testing.pl // load the mutation tester 
@@ -22,7 +22,7 @@ $ swipl yourmodule.pl
 ?- mutation_testing:mutation_test. 
 
 
-## Interface:
+## Interface
 
 Provided predicates within the framework are mutation_test/0, mutation_test/1 and mutation_test/2.
 
@@ -35,8 +35,8 @@ Provided predicates within the framework are mutation_test/0, mutation_test/1 an
     
   mutation_test(+Input).
   
-    If input is not a list, mutation_test([], Input) is being called. Otherwise, mutation_test(Input, basic) is being called.
+    If input is one atom of basic, deep or experimental, mutation_test([], Input) is being called. Otherwise, mutation_test(Input, basic) is being called where Input contains the modules to be tested.
     
   mutation_test.
   
-    Calls mutation_test([], basic).
+    Calls mutation_test([], basic) using mutations which we evaluated to be sensible in most cases (i.e., the mutations change the program's semantics/output).
