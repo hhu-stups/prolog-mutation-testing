@@ -2,6 +2,7 @@
 % Heinrich Heine Universitaet Duesseldorf
 % This software is licenced under EPL 1.0 (http://www.eclipse.org/org/documents/epl-v10.html)
 
+
 :- module(mutation_testing, [mutation_test/0, mutation_test/1, mutation_test/2]).
 
 
@@ -185,7 +186,8 @@ mutation_test(_, _) :-
   length(LoopMutants, LoopCount),
   Mutations is LivingCount + DeadCount,
   AllMutations is Mutations + LoopCount,
-  print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations).
+  print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations),
+  export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCount, AllMutations, Mutations).
 
 
 % HELPERS
@@ -354,6 +356,46 @@ print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations) :-
   format('~w dead mutants~n', [DeadCount]),
   format('~w timeouts~n~n', [LoopCount]),
   format('Mutation score: ~1f%~n~n', [Mutationscore]).
+
+
+export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCount, AllMutations, Mutations) :-
+  Score is DeadCount / Mutations,
+  Mutationscore is Score * 100,
+  current_output(Out),
+  open('export.txt', write, Stream),
+  set_output(Stream),
+  format('~nMUTATION SCORE: ~1f%~n~n~n', [Mutationscore]),
+  format('~w generated mutants~n~n', [AllMutations]),
+  format('~w living mutants~n', [LivingCount]),
+  format('~w dead mutants~n', [DeadCount]),
+  format('~w timeouts~n~n~nANALYSIS:~n~n~n', [LoopCount]),
+  format('LIVING MUTANTS: ~w~n~n~n', [LivingCount]),
+  export_printer(LivingMutants),
+  format('~n~nDEAD MUTANTS: ~w~n~n~n', [DeadCount]),
+  export_printer(DeadMutants),
+  format('~n~nTIMEOUT: ~w~n~n~n', [LoopCount]),
+  export_printer(LoopMutants),
+  set_output(Out),
+  close(Stream).
+
+
+export_printer([]).
+export_printer([Head|Tail]) :-
+  Head = mutation_result(Predicate, Mutation, Source, Mutant, _),
+  Source = [my_clause(Module, _, _)|_],
+  format('Module: ~w ~nPredicate: ~w ~nMutation: ~w ~nSource:~n~n', [Module, Predicate, Mutation]),
+  export_printer_aux(Source),
+  format('~nMutant: ~n~n', []),
+  export_printer_aux(Mutant),
+  format('~n$~n~n', []),
+  export_printer(Tail).
+
+
+export_printer_aux([]).
+export_printer_aux([Clause|Tail]) :-
+  Clause = my_clause(_, Head, Body),
+  format('~w :- ~w~n', [Head, Body]),
+  export_printer_aux(Tail).
 
 
 find_mutations(basic, Mutations) :- !,
