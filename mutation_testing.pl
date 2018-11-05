@@ -1,10 +1,4 @@
-% (c) 2018 Lehrstuhl fuer Softwaretechnik und Programmiersprachen,
-% Heinrich Heine Universitaet Duesseldorf
-% This software is licenced under EPL 1.0 (http://www.eclipse.org/org/documents/epl-v10.html)
-
-
 :- module(mutation_testing, [mutation_test/0, mutation_test/1, mutation_test/2]).
-
 
 :- if(current_prolog_flag(dialect, sicstus)).
 
@@ -24,7 +18,6 @@
 :- dynamic redefined_instance/4.
 :- dynamic mutation_result/5.
 
-
 basic(remove_all(_)).
 basic(disjunction_to_conjunction(_)).
 basic(unif_equal_to_unif_nonequal(_)).
@@ -37,6 +30,10 @@ basic(negate_gt(_)).
 basic(negate_lt(_)).
 basic(negate_ge(_)).
 basic(negate_le(_)).
+basic(edge_gt(_)).
+basic(edge_lt(_)).
+basic(edge_ge(_)).
+basic(edge_le(_)).
 basic(add_to_sub(_)).
 basic(sub_to_add(_)).
 basic(mul_to_add(_)).
@@ -48,49 +45,34 @@ basic(mutate_arity0(_, false_to_true)).
 basic(mutate_arity0(_, atom_to_anonymus)).
 basic(mutate_arity0(_, empty_list_to_anonymous)).
 
-
 deep(Mutation) :- basic(Mutation).
 deep(permute_cut(_)).
 deep(mutate_arity0(_, increase_number)).
 deep(mutate_arity0(_, decrease_number)).
 
-
 experimental(Mutation) :- deep(Mutation).
 experimental(conjunction_to_disjunction(_)).
 experimental(reverse_predicate(_)).
 
-
 % LAUNCH PREDICATE
-
-
 mutation_test :-
   mutation_test([], basic), !.
-
 mutation_test(basic) :-
   mutation_test([], basic), !.
-
 mutation_test(deep) :-
   mutation_test([], deep), !.
-
 mutation_test(experimental) :-
   mutation_test([], experimental), !.
-
 mutation_test(Modules) :-
   is_list(Modules),
   mutation_test(Modules, basic), !.
-
 mutation_test(_, []) :-
-  !,
-  format('~nPlease specify the desired mutations. ~n~n', []).
-
+  !, format('~nPlease specify the desired mutations. ~n~n', []).
 mutation_test(_, _) :-
   \+ my_clause(_, _, _),
-  !,
-  format('~nThere are no predicates to be tested. ~n~n', []).
+  !, format('~nThere are no predicates to be tested. ~n~n', []).
 
-
-:- if(current_prolog_flag(dialect, swi)). % SWI
-
+:- if(current_prolog_flag(dialect, swi)).
 
 mutation_test(ModuleOptions, Depth) :-
   cleanup,
@@ -102,7 +84,7 @@ mutation_test(ModuleOptions, Depth) :-
   statistics(walltime, [Start|_]),
   my_run_tests(Tests),
   statistics(walltime, [End|_]),
-  calc_cap(Start, End, Cap),
+  calc_cap(1, Start, End, Cap),
   ansi_format([bold,fg(green)], '~nOK~n~n', []),
   set_my_stream,
   format('Starting to mutate source code: ~n~n', []),
@@ -131,8 +113,7 @@ mutation_test(ModuleOptions, Depth) :-
   fail.
 
 
-:- elif(current_prolog_flag(dialect, sicstus)). % SICStus
-
+:- elif(current_prolog_flag(dialect, sicstus)).
 
 mutation_test(ModuleOptions, Depth) :-
   cleanup,
@@ -144,7 +125,7 @@ mutation_test(ModuleOptions, Depth) :-
   statistics(walltime, [Start|_]),
   my_run_tests(Tests),
   statistics(walltime, [End|_]),
-  calc_cap(Start, End, Cap),
+  calc_cap(1000, Start, End, Cap),
   format('~nOK~n~nStarting to mutate source code: ~n~n', []),
   member(KindOfChange, Mutations),
   mutate(KindOfChange, ModuleOptions, Implementations, NewImplementations, mutation),
@@ -173,9 +154,7 @@ mutation_test(ModuleOptions, Depth) :-
   format('%%% ... %%% ~n~n', []),
   fail.
 
-
 :- endif.
-
 
 mutation_test(_, _) :-
   findall(mutation_result(Predicate, Mutation, Implementations, NewImplementations, alive), mutation_result(Predicate, Mutation, Implementations, NewImplementations, alive), LivingMutants),
@@ -186,12 +165,8 @@ mutation_test(_, _) :-
   length(LoopMutants, LoopCount),
   Mutations is LivingCount + DeadCount,
   AllMutations is Mutations + LoopCount,
-  print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations),
-  export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCount, AllMutations, Mutations).
-
-
-% HELPERS
-
+  print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations).
+  %export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCount, AllMutations, Mutations).
 
 mutate_aux(Implementations, [], MutationOrFix) :-
   format('Source: ~n~w~n~n', [Implementations]),
@@ -217,7 +192,6 @@ mutate_aux(Implementations, NewImplementations, MutationOrFix) :-
   retractall_clause(NewImplementation),
   maplist(assert_clause, Implementations),
   MutationOrFix = fix.
-
 
 pred_iterator([], Functor, Implementations) :- !,
   seen(Module, Name, Arity),
@@ -245,10 +219,8 @@ pred_iterator(Options, Functor, AllImplementations, CutImplementations) :-
   CutImplementations \= [],
   findall(my_clause(Module, Functor, Body), clause(Module:Functor, Body), AllImplementations).
 
-
 assert_clause(my_clause(Module, Functor, Body)) :-
   assertz(Module:(Functor :- Body)).
-
 
 retractall_clause(my_clause(Module, Functor, _Body)) :-
   Functor =.. [Head|Tail],
@@ -256,21 +228,18 @@ retractall_clause(my_clause(Module, Functor, _Body)) :-
   AlternativeFunctor =.. [Head|NewTail],
   retractall(Module:AlternativeFunctor).
 
-
 general_tail([], []) :- !.
 general_tail([_|Tail], [_|NewTail]) :-
   general_tail(Tail, NewTail).
 
-
 check_result('_', _) :- !.
 check_result(Input, Input).
 
-
-calc_cap(Start, End, Cap) :-
+% Beware: SICStus measures time in milliseconds, SWI in seconds.
+calc_cap(AddConstant,Start, End, Cap) :-
   Time is End - Start,
   CapMs is Time / 1000,
-  Cap is (ceiling(CapMs) * 2) + 1.
-
+  Cap is (ceiling(CapMs) * 2) + AddConstant.
 
 set_my_stream :-
   open('/dev/null', write, Stream),
@@ -281,31 +250,25 @@ set_my_stream(Error, Stream) :-
   open('/dev/null', write, Stream),
   set_error(Stream).
 
-
 current_error(Stream) :-
     stream_property(Stream, alias(user_error)), !.
-
 
 set_error(Stream) :-
     set_stream(Stream, alias(user_error)).
 
-
 reset_my_stream(Error, Stream) :-
   set_error(Error),
   close(Stream).
-
 
 my_run([], Tests-_) :- !,
   findall(my_test(Module, Block, Name), my_test(Module, Block, Name), Tests).
 my_run(Options, Tests) :-
   find_tests(Options, [], Tests).
 
-
 my_run_tests([]-[]) :- !.
 my_run_tests([my_test(_, Block, Name)|Tests]-A) :-
   plunit:run_tests(Block:Name),
   my_run_tests(Tests-A).
-
 
 find_tests([], Tests-A, Tests-A).
 find_tests([Module|Modules], CurrentTests, Result) :-
@@ -313,39 +276,35 @@ find_tests([Module|Modules], CurrentTests, Result) :-
   (CurrentTests = [] -> Tests-_ = NewTests; my_append(CurrentTests, Tests-_, NewTests)),
   find_tests(Modules, NewTests, Result).
 
-
 my_append(Element-List, List-Diff, Element-Diff).
-
 
 my_member(Element, [Head|_]) :-
   Element == Head, !.
 my_member(Element, [_|Tail]) :-
   my_member(Element, Tail).
 
-
-check_for_flag(Left, Result) :-
-  (atom(Left); var(Left)) ->
-    Result = flag; Result = no_flag.
-
+check_for_flag(Left, flag) :-
+  atom(Left) , !.
+check_for_flag(Left, flag) :-
+  var(Left) , !.
+check_for_flag(Left, no_flag).
 
 cleanup :-
   retractall(mutation_result(_, _, _, _, _)),
   retractall(has_cut(_, _)),
   retractall(redefined_instance(_, cut_supporter, _, _)).
 
-
 swi_exception_handler(Exception) :-
   Exception == time_limit_exceeded,
   asserta(infinite_loop),
   fail.
-
 
 print_result(DeadCount, LivingCount, LoopCount, AllMutations, 0) :- !,
   Mutationscore is 0,
   format('~w generated mutants~n~n', [AllMutations]),
   format('~w living mutants~n', [LivingCount]),
   format('~w dead mutants~n', [DeadCount]),
-  format('~w timeouts~n~n', [LoopCount]),
+  format('~w timeouts~n~n', [LoopCount]), 
   format('Mutation score: ~1f%~n~n', [Mutationscore]).
 
 print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations) :-
@@ -354,9 +313,8 @@ print_result(DeadCount, LivingCount, LoopCount, AllMutations, Mutations) :-
   format('~w generated mutants~n~n', [AllMutations]),
   format('~w living mutants~n', [LivingCount]),
   format('~w dead mutants~n', [DeadCount]),
-  format('~w timeouts~n~n', [LoopCount]),
+  format('~w timeouts~n~n', [LoopCount]), 
   format('Mutation score: ~1f%~n~n', [Mutationscore]).
-
 
 export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCount, AllMutations, Mutations) :-
   Score is DeadCount / Mutations,
@@ -378,7 +336,6 @@ export(LivingMutants, DeadMutants, LoopMutants, LivingCount, DeadCount, LoopCoun
   set_output(Out),
   close(Stream).
 
-
 export_printer([]).
 export_printer([Head|Tail]) :-
   Head = mutation_result(Predicate, Mutation, Source, Mutant, _),
@@ -390,13 +347,11 @@ export_printer([Head|Tail]) :-
   format('~n$~n~n', []),
   export_printer(Tail).
 
-
 export_printer_aux([]).
 export_printer_aux([Clause|Tail]) :-
   Clause = my_clause(_, Head, Body),
   format('~w :- ~w~n', [Head, Body]),
   export_printer_aux(Tail).
-
 
 find_mutations(basic, Mutations) :- !,
   findall(Mutation, basic(Mutation), Mutations).
@@ -421,7 +376,6 @@ find_mutations(Changes, Mutations) :-
       Changes = Mutations
   ).
 
-
 prepare_result(KindOfChange, (Name/Arity), Mutation) :-
   functor(KindOfChange, Change, _),
   KindOfChange =.. Changes,
@@ -436,10 +390,7 @@ prepare_result(KindOfChange, (Name/Arity), Mutation) :-
       length(Arguments, Arity)
   ).
 
-
 % MUTATION EXECUTERS
-
-
 mutate_functor([Head|Tail], Functor, Redefinition, [NewHead|Tail]) :-
   Head = my_clause(Module, Fun, Body),
   Body =.. List,
@@ -450,12 +401,10 @@ mutate_functor([Head|Tail], Functor, Redefinition, [NewHead|Tail]) :-
 mutate_functor([Head|Tail], Functor, Redefinition, [Head|NewTail]) :-
   mutate_functor(Tail, Functor, Redefinition, NewTail).
 
-
 redefine_functor([Functor|Tail], Functor, Redefinition, [Redefinition|Tail]).
 redefine_functor([Head|Tail], Functor, Redefinition, [Head|NewTail]) :-
   Tail \= [],
   redefining_functor(Tail, Functor, Redefinition, NewTail).
-
 
 redefining_functor([Head|Tail], Functor, Redefinition, [NewHead|Tail]) :-
   nonvar(Head),
@@ -466,10 +415,7 @@ redefining_functor([Head|Tail], Functor, Redefinition, [NewHead|Tail]) :-
 redefining_functor([Head|Tail], Functor, Redefinition, [Head|NewTail]) :-
   redefining_functor(Tail, Functor, Redefinition, NewTail).
 
-
 % arity0
-
-
 mutate_instances([Head|Tail], KindOfChange, [NewHead|Tail]) :-
   Head = my_clause(Module, Functor, Body),
   Functor =.. List,
@@ -489,7 +435,6 @@ mutate_instances([Head|Tail], KindOfChange, [NewHead|Tail]) :-
 
 mutate_instances([Head|Tail], KindOfChange, [Head|NewTail]) :-
   mutate_instances(Tail, KindOfChange, NewTail).
-
 
 redefine_instance([Head], KindOfChange, _, Clause, [NewHead]) :-
   redefined_instance(Head, KindOfChange, Clause, NewHead).
@@ -520,7 +465,6 @@ redefine_instance([Head|Tail], KindOfChange, Position, Clause, [Head|NewTail]) :
 redefine_instance([Head|Tail], KindOfChange, Position, Clause, [Head|NewTail]) :-
   redefining_instance(Tail, KindOfChange, Position, Clause, NewTail).
 
-
 redefining_instance([Head|Tail], KindOfChange, Position, Clause, [NewHead|Tail]) :-
   var(Head),
   redefine_instance([Head], KindOfChange, Position, Clause, Result),
@@ -536,7 +480,6 @@ redefining_instance([Head|Tail], KindOfChange, Position, Clause, [NewHead|Tail])
 
 redefining_instance([Head|Tail], KindOfChange, Position, Clause, [Head|NewTail]) :-
   redefining_instance(Tail, KindOfChange, Position, Clause, NewTail).
-
 
 :- if(current_prolog_flag(dialect, swi)).
 
@@ -588,10 +531,7 @@ redefined_instance(Instance, empty_list_to_anonymous, _, '_') :-
   atomic(Instance),
   Instance = [].
 
-
 % cuts
-
-
 permute_cut([Head|Tail], [(CutHead, Positions)|CutTail], [Head|NewTail]) :-
   Head \= CutHead,
   !,
@@ -606,28 +546,23 @@ permute_cut([Head|Tail], [(Head, Positions)|_], [NewHead|Tail]) :-
 permute_cut([Head|Tail], [(Head, _)|CutTail], [Head|NewTail]) :-
   permute_cut(Tail, CutTail, NewTail).
 
-
 permuting_cut(_, _, []-[], _) :- !, fail.
-
 permuting_cut(','(Left, Right), Counter, [Position|_]-_, NewBody) :-
   Pos is Position - 1,
-  Pos = Counter,
+  Pos == Counter,
   remove_cut(Left, Right, EdgeCase, NewBody),
   (nonvar(EdgeCase) -> !; true).
-
 permuting_cut(','(Left, Right), Position, [Position|_]-_, ','(!, Left)) :-
   atom(Right),
   Right = !,
   !.
-
 permuting_cut(','(Left, Right), Counter, [Position|Positions]-A, ','(Left, NewRight)) :-
   NewCounter is Counter + 1,
-  (Counter = Position -> NewPositions = Positions-A; NewPositions = [Position|Positions]-A),
+  (Counter == Position -> NewPositions = Positions-A; NewPositions = [Position|Positions]-A),
   permuting_cut(Right, NewCounter, NewPositions, NewRight).
 
-
 add_cut(','(Left, Right), ','(Left, NewRight)) :-
-  NewRight = ','(!, Right), !.
+  NewRight == ','(!, Right), !.
 add_cut(Right, ','(Right,!)).
 
 % standard case
@@ -636,9 +571,7 @@ remove_cut(OldLeft, ','(Left, Right), _NoEdgeCase, ','(NewLeft, Right)) :-
   Left = !,
   !,
   NewLeft = ','(!,OldLeft).
-
 remove_cut(OldLeft, ','(Left, _Right), edge_case, ','(OldLeft, ','(!, Left))).
-
 
 negate_expression([Head|Tail], [NewHead|Tail]) :-
   Head = my_clause(Module, Functor, Body),
@@ -647,23 +580,16 @@ negate_expression([Head|Tail], [NewHead|Tail]) :-
   Body \= fail,
   negating_expression(Body, NewBody),
   NewHead = my_clause(Module, Functor, NewBody).
-
 negate_expression([Head|Tail], [Head|NewTail]) :-
   negate_expression(Tail, NewTail).
 
-
 negating_expression(','(Left, Right), ','(\+(Left), Right)) :- !.
-
 negating_expression(';'(Left, Right), ';'(NewLeft, Right)) :-
   !,
   negating_expression(Left, NewLeft).
-
 negating_expression(Leaf, \+(Leaf)).
 
-
 % MUTATIONS
-
-
 mutate_pred(Functor, conjunction_to_disjunction(Functor), (','), (';')).
 mutate_pred(Functor, disjunction_to_conjunction(Functor), (';'), (',')).
 mutate_pred(Functor, unif_equal_to_unif_nonequal(Functor), (=), (\=)).
@@ -680,41 +606,37 @@ mutate_pred(Functor, negate_gt(Functor), (>), (=<)).
 mutate_pred(Functor, negate_lt(Functor), (<), (>=)).
 mutate_pred(Functor, negate_ge(Functor), (>=), (<)).
 mutate_pred(Functor, negate_le(Functor), (=<), (>)).
-
+mutate_pred(Functor, edge_gt(Functor), (>), (==)).
+mutate_pred(Functor, edge_lt(Functor), (<), (==)).
+mutate_pred(Functor, edge_ge(Functor), (>=), (==)).
+mutate_pred(Functor, edge_le(Functor), (=<), (==)).
 
 mutate(remove_all(Functor), Options, Implementations, [], MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
   mutate_aux(Implementations, [], MutationOrFix).
-
 mutate(reverse_predicate(Functor), Options, Implementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
   reverse(Implementations, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
-
 mutate(MutationCommand, Options, Implementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
   mutate_pred(Functor, MutationCommand, Before, After),
   mutate_functor(Implementations, Before, After, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
-
 mutate(mutate_arity0(Functor, KindOfChange), Options, Implementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
   mutate_instances(Implementations, KindOfChange, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
-
 mutate(negate_expression(Functor), Options, Implementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
   negate_expression(Implementations, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
-
 mutate(permute_cut(Functor), Options, AllImplementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, AllImplementations, CutImplementations),
   permute_cut(AllImplementations, CutImplementations, NewImplementations),
   mutate_aux(AllImplementations, NewImplementations, MutationOrFix).
 
-
 % SET UP PREDICATES
-
 add_dynamic(plunit, _, _) :- !, fail.
 add_dynamic(_Module, (test(_) :- _), _) :- !, fail.
 add_dynamic(_Module, (test(_, _) :- _), _) :- !, fail.
@@ -732,37 +654,28 @@ add_dynamic(Module, Head, (:- dynamic Name/Arity)) :- !,
   \+ seen(Module, Name, Arity),
   assertz(seen(Module, Name, Arity)).
 
-
 collect_stuff(_, plunit) :- !.
 collect_stuff(end_of_file, _) :- !.
 collect_stuff((_-->_), _) :- !.
-
 collect_stuff((:- begin_tests(Block)), Module) :-
   asserta(my_current_module(Module)),
   asserta(current_tests(Block)), !.
-
 collect_stuff((:- end_tests(Block)), Module) :-
   retract(my_current_module(Module)),
   retract(current_tests(Block)), !.
-
 collect_stuff((:- _), _) :- !.
-
 collect_stuff((test(Name) :- _), _) :-
   my_current_module(Module),
   current_tests(Block),
   assertz(my_test(Module, Block, Name)), !.
-
 collect_stuff((test(Name, _) :- _), _) :-
   my_current_module(Module),
   current_tests(Block),
   assertz(my_test(Module, Block, Name)), !.
-
 collect_stuff((Functor :- Body), Module) :-
   assertz(my_clause(Module, Functor, Body)), !.
-
 collect_stuff(Functor, Module) :-
   assertz(my_clause(Module, Functor, true)).
-
 
 :- if(current_prolog_flag(dialect, swi)).
 
@@ -779,14 +692,11 @@ user:term_expansion(TermIn, LayoutIn, TermsOut, LayoutOut) :-
         TermsOut = TermIn
     ).
 
-
 :- elif(current_prolog_flag(dialect, sicstus)).
-
 
 user:portray_message(_Severity, plunit(failed(FailedTests))) :-
      FailedTests > 0,
      asserta(test_failed), !.
-
 
 term_expansion_aux(TermIn, Module, TermOut) :-
     collect_stuff(TermIn, Module),
@@ -801,6 +711,5 @@ user:term_expansion(TermIn, LayoutIn, Ids, TermOut, LayoutIn, [mutation_testing_
     nonmember(mutation_testing_token, Ids),
     prolog_load_context(module, Module),
     term_expansion_aux(TermIn, Module, TermOut).
-
 
 :- endif.
