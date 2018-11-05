@@ -1,3 +1,7 @@
+% (c) 2018 Lehrstuhl fuer Softwaretechnik und Programmiersprachen,
+% Heinrich Heine Universitaet Duesseldorf
+% This software is licenced under EPL 1.0 (http://www.eclipse.org/org/documents/epl-v10.html)
+
 :- module(mutation_testing, [mutation_test/0, mutation_test/1, mutation_test/2]).
 
 :- if(current_prolog_flag(dialect, sicstus)).
