@@ -1,0 +1,4 @@
+*.swp
+*.so
+driver.bundle
+c_interpreter

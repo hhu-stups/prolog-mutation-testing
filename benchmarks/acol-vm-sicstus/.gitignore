@@ -1,0 +1,5 @@
+*.swp
+*.so
+driver.bundle
+c_interpreter
+c_interpreter.dSYM/
