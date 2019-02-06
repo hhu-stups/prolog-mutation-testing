@@ -10,17 +10,12 @@
 :- use_module(library(lists)).
 :- use_module(library(terms)).
 :- dynamic test_failed/0.
+:- volatile test_failed/0.
 
 :- endif.
 
-:- dynamic infinite_loop/0.
-:- dynamic current_tests/1.
-:- dynamic has_cut/2.
-:- dynamic my_clause/3.
-:- dynamic seen/3.
-:- dynamic my_test/3.
-:- dynamic redefined_instance/4.
-:- dynamic mutation_result/5.
+:- dynamic infinite_loop/0, current_tests/1, has_cut/2, my_clause/3, seen/3, my_test/3, redefined_instance/3, mutation_result/5.
+:- volatile infinite_loop/0, current_tests/1, has_cut/2, my_clause/3, seen/3, my_test/3, redefined_instance/3, mutation_result/5.
 
 basic(remove_all(_)).
 basic(disjunction_to_conjunction(_)).
@@ -212,7 +207,7 @@ pred_iterator([], Functor, AllImplementations, CutImplementations) :- !,
   seen(Module, Name, Arity),
   functor(Functor, Name, Arity),
   findall((my_clause(Module, Functor, Body), Positions), has_cut(my_clause(Module, Functor, Body), Positions), CutImplementations),
-  CutImplementations \= [],
+  CutImplementations \== [],
   findall(my_clause(Module, Functor, Body), clause(Module:Functor, Body), AllImplementations).
 
 pred_iterator(Options, Functor, AllImplementations, CutImplementations) :-
@@ -220,7 +215,7 @@ pred_iterator(Options, Functor, AllImplementations, CutImplementations) :-
   my_member(Module, Options),
   functor(Functor, Name, Arity),
   findall((my_clause(Module, Functor, Body), Positions), has_cut(my_clause(Module, Functor, Body), Positions), CutImplementations),
-  CutImplementations \= [],
+  CutImplementations \== [],
   findall(my_clause(Module, Functor, Body), clause(Module:Functor, Body), AllImplementations).
 
 assert_clause(my_clause(Module, Functor, Body)) :-
@@ -407,7 +402,7 @@ mutate_functor([Head|Tail], Functor, Redefinition, [Head|NewTail]) :-
 
 redefine_functor([Functor|Tail], Functor, Redefinition, [Redefinition|Tail]).
 redefine_functor([Head|Tail], Functor, Redefinition, [Head|NewTail]) :-
-  Tail \= [],
+  Tail \== [],
   redefining_functor(Tail, Functor, Redefinition, NewTail).
 
 redefining_functor([Head|Tail], Functor, Redefinition, [NewHead|Tail]) :-
@@ -430,9 +425,9 @@ mutate_instances([Head|Tail], KindOfChange, [NewHead|Tail]) :-
 mutate_instances([Head|Tail], KindOfChange, [NewHead|Tail]) :-
   Head = my_clause(Module, Functor, Body),
   Body =.. List,
-  List \= [true],
-  List \= [false],
-  List \= [fail],
+  List \== [true],
+  List \== [false],
+  List \== [fail],
   redefine_instance(List, KindOfChange, 0, Head, Result),
   NewBody =.. Result,
   NewHead = my_clause(Module, Functor, NewBody).
@@ -461,7 +456,7 @@ redefine_instance([Head], _, Position, Clause, _) :-
   fail.
 
 redefine_instance([Head|Tail], KindOfChange, Position, Clause, [Head|NewTail]) :-
-  (Head = ','; Head = ';'),
+  (Head = ',' ; Head = ';'),
   !,
   NextPosition is Position + 1,
   redefining_instance(Tail, KindOfChange, NextPosition, Clause, NewTail).
@@ -513,12 +508,12 @@ redefined_instance(Instance, false_to_true, _, true) :-
 
 redefined_instance(Instance, atom_to_anonymus, Clause, '_') :-
   atom(Instance),
-  Instance \= true,
-  Instance \= false,
-  Instance \= !,
-  Instance \= repeat,
-  Instance \= fail,
-  Instance \= [],
+  Instance \== true,
+  Instance \== false,
+  Instance \== !,
+  Instance \== repeat,
+  Instance \== fail,
+  Instance \== [],
   Clause = my_clause(Module, _, _),
   catch(call(Module:Instance), _, Result = failed),
   Result == failed.
@@ -532,8 +527,7 @@ redefined_instance(Instance, decrease_number, _, Value) :-
   Value is Instance - 1.
 
 redefined_instance(Instance, empty_list_to_anonymous, _, '_') :-
-  atomic(Instance),
-  Instance = [].
+  Instance == [].
 
 % cuts
 permute_cut([Head|Tail], [(CutHead, Positions)|CutTail], [Head|NewTail]) :-
@@ -566,32 +560,29 @@ permuting_cut(','(Left, Right), Counter, [Position|Positions]-A, ','(Left, NewRi
   permuting_cut(Right, NewCounter, NewPositions, NewRight).
 
 add_cut(','(Left, Right), ','(Left, NewRight)) :-
-  NewRight == ','(!, Right), !.
+  NewRight = ','(!, Right) , !.
 add_cut(Right, ','(Right,!)).
 
 % standard case
 remove_cut(OldLeft, ','(Left, Right), _NoEdgeCase, ','(NewLeft, Right)) :-
-  atom(Left),
-  Left = !,
-  !,
+  Left == !, !,
   NewLeft = ','(!,OldLeft).
 remove_cut(OldLeft, ','(Left, _Right), edge_case, ','(OldLeft, ','(!, Left))).
 
 negate_expression([Head|Tail], [NewHead|Tail]) :-
   Head = my_clause(Module, Functor, Body),
-  Body \= true,
-  Body \= false,
-  Body \= fail,
-  negating_expression(Body, NewBody),
+  Body \== true,
+  Body \== false,
+  Body \== fail,
+  negate_expression_aux(Body, NewBody),
   NewHead = my_clause(Module, Functor, NewBody).
 negate_expression([Head|Tail], [Head|NewTail]) :-
   negate_expression(Tail, NewTail).
 
-negating_expression(','(Left, Right), ','(\+(Left), Right)) :- !.
-negating_expression(';'(Left, Right), ';'(NewLeft, Right)) :-
-  !,
-  negating_expression(Left, NewLeft).
-negating_expression(Leaf, \+(Leaf)).
+negate_expression_aux(','(Left, Right), ','(\+(Left), Right)) :- !.
+negate_expression_aux(';'(Left, Right), ';'(NewLeft, Right)) :-
+  ! , negate_expression_aux(Left, NewLeft).
+negate_expression_aux(Leaf, \+(Leaf)).
 
 % MUTATIONS
 mutate_pred(Functor, conjunction_to_disjunction(Functor), (','), (';')).
