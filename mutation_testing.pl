@@ -37,7 +37,7 @@ basic(add_to_sub(_)).
 basic(sub_to_add(_)).
 basic(mul_to_add(_)).
 basic(div_to_sub(_)).
-basic(negate_expression(_)).
+basic(negate_predicate(_)).
 basic(mutate_arity0(_, variable_to_anonymous)).
 basic(mutate_arity0(_, true_to_false)).
 basic(mutate_arity0(_, false_to_true)).
@@ -439,16 +439,14 @@ redefine_instance([Head], KindOfChange, _, Clause, [NewHead]) :-
   redefined_instance(Head, KindOfChange, Clause, NewHead).
 
 redefine_instance([Head], _, Position, Clause, _) :-
-  atom(Head),
-  Head = !,
+  Head == !,
   \+ has_cut(Clause, _),
   !,
   assertz(has_cut(Clause, [Position|A]-A)),
   fail.
 
 redefine_instance([Head], _, Position, Clause, _) :-
-  atom(Head),
-  Head = !,
+  Head == !,
   has_cut(Clause, List),
   my_append(List, [Position|A]-A, Result),
   retract(has_cut(Clause, List)),
@@ -456,7 +454,7 @@ redefine_instance([Head], _, Position, Clause, _) :-
   fail.
 
 redefine_instance([Head|Tail], KindOfChange, Position, Clause, [Head|NewTail]) :-
-  (Head = ',' ; Head = ';'),
+  (Head == ',' ; Head == ';'),
   !,
   NextPosition is Position + 1,
   redefining_instance(Tail, KindOfChange, NextPosition, Clause, NewTail).
@@ -499,15 +497,12 @@ redefined_instance(Instance, variable_to_anonymous, Clause, '_') :-
 :- endif.
 
 redefined_instance(Instance, true_to_false, _, false) :-
-  atom(Instance),
-  Instance = true.
+  Instance == true.
 
 redefined_instance(Instance, false_to_true, _, true) :-
-  atom(Instance),
-  (Instance = false; Instance = fail).
+  (Instance == false ; Instance == fail).
 
 redefined_instance(Instance, atom_to_anonymus, Clause, '_') :-
-  atom(Instance),
   Instance \== true,
   Instance \== false,
   Instance \== !,
@@ -551,9 +546,7 @@ permuting_cut(','(Left, Right), Counter, [Position|_]-_, NewBody) :-
   remove_cut(Left, Right, EdgeCase, NewBody),
   (nonvar(EdgeCase) -> !; true).
 permuting_cut(','(Left, Right), Position, [Position|_]-_, ','(!, Left)) :-
-  atom(Right),
-  Right = !,
-  !.
+  Right == ! , !.
 permuting_cut(','(Left, Right), Counter, [Position|Positions]-A, ','(Left, NewRight)) :-
   NewCounter is Counter + 1,
   (Counter == Position -> NewPositions = Positions-A; NewPositions = [Position|Positions]-A),
@@ -569,20 +562,20 @@ remove_cut(OldLeft, ','(Left, Right), _NoEdgeCase, ','(NewLeft, Right)) :-
   NewLeft = ','(!,OldLeft).
 remove_cut(OldLeft, ','(Left, _Right), edge_case, ','(OldLeft, ','(!, Left))).
 
-negate_expression([Head|Tail], [NewHead|Tail]) :-
+negate_predicate([Head|Tail], [NewHead|Tail]) :-
   Head = my_clause(Module, Functor, Body),
   Body \== true,
   Body \== false,
   Body \== fail,
-  negate_expression_aux(Body, NewBody),
+  negate_predicate_aux(Body, NewBody),
   NewHead = my_clause(Module, Functor, NewBody).
-negate_expression([Head|Tail], [Head|NewTail]) :-
-  negate_expression(Tail, NewTail).
+negate_predicate([Head|Tail], [Head|NewTail]) :-
+  negate_predicate(Tail, NewTail).
 
-negate_expression_aux(','(Left, Right), ','(\+(Left), Right)) :- !.
-negate_expression_aux(';'(Left, Right), ';'(NewLeft, Right)) :-
-  ! , negate_expression_aux(Left, NewLeft).
-negate_expression_aux(Leaf, \+(Leaf)).
+negate_predicate_aux(','(Left, Right), ','(\+(Left), Right)) :- !.
+negate_predicate_aux(';'(Left, Right), ';'(NewLeft, Right)) :-
+  ! , negate_predicate_aux(Left, NewLeft).
+negate_predicate_aux(Leaf, \+(Leaf)).
 
 % MUTATIONS
 mutate_pred(Functor, conjunction_to_disjunction(Functor), (','), (';')).
@@ -622,9 +615,9 @@ mutate(mutate_arity0(Functor, KindOfChange), Options, Implementations, NewImplem
   pred_iterator(Options, Functor, Implementations),
   mutate_instances(Implementations, KindOfChange, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
-mutate(negate_expression(Functor), Options, Implementations, NewImplementations, MutationOrFix) :-
+mutate(negate_predicate(Functor), Options, Implementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, Implementations),
-  negate_expression(Implementations, NewImplementations),
+  negate_predicate(Implementations, NewImplementations),
   mutate_aux(Implementations, NewImplementations, MutationOrFix).
 mutate(permute_cut(Functor), Options, AllImplementations, NewImplementations, MutationOrFix) :-
   pred_iterator(Options, Functor, AllImplementations, CutImplementations),
